@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dompet Digital Bree</title>
+<link rel="manifest" href="manifest.json">
+<style>
+* { box-sizing:border-box;margin:0;padding:0; }
+body { font-family:"Poppins",Arial,sans-serif; background:linear-gradient(135deg,#74ebd5,#9face6); min-height:100vh; display:flex; justify-content:center; align-items:flex-start; padding:20px;}
+.container { background:white;width:100%;max-width:520px;padding:25px;border-radius:20px;box-shadow:0 8px 25px rgba(0,0,0,0.2);}
+h1 { text-align:center;margin-bottom:20px;color:#333;}
+h2 { margin-top:20px;color:#333;}
+.saldo-box { display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
+.saldo-item { padding:14px;border-radius:14px;text-align:center;color:white;}
+.saldo-cash { background:#3b82f6; }
+.saldo-ewallet { background:#10b981; }
+.saldo-keluar { background:#ef4444; }
+.saldo-total { background:#8b5cf6; }
+.saldo-item span { font-size:13px; }
+.saldo-item p { font-size:18px;font-weight:bold;margin-top:5px; }
+input,select,button { padding:10px;margin:6px 0;width:100%;font-size:14px;border-radius:10px;border:1px solid #ccc; }
+button { cursor:pointer;border:none;color:white;font-weight:bold;}
+.btn-add { background:green;margin-top:5px;}
+.btn-reset { background:red;}
+table { border-collapse: collapse; width:100%; margin-top:12px; font-size:13px; display:none; }
+th,td { border:1px solid #ccc; padding:6px; text-align:left; }
+th { background:#eee; }
+
+/* Saran muncul di atas input */
+.suggestions-container { position:absolute; background:rgba(255,255,255,0.95); border:1px solid #ccc; border-radius:8px; width:95%; max-height:150px; overflow-y:auto; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:10; bottom:100%; margin-bottom:5px; display:none; }
+.suggestion-item { padding:6px 10px; cursor:pointer; color:#555; font-style:italic; font-weight:normal; }
+.suggestion-item:hover { background:#f0f0f0; }
+.relative-container { position:relative; margin-bottom:20px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>💰 Dompet Digital Bree</h1>
+
+<!-- Saldo -->
+<div class="saldo-box">
+  <div class="saldo-item saldo-cash"><span>Cash</span><p id="cashSaldo">Rp0</p></div>
+  <div class="saldo-item saldo-ewallet"><span>E-wallet</span><p id="ewalletSaldo">Rp0</p></div>
+  <div class="saldo-item saldo-keluar"><span>Uang Keluar</span><p id="totalKeluar">Rp0</p></div>
+  <div class="saldo-item saldo-total"><span>Total</span><p id="totalSaldo">Rp0</p></div>
+</div>
+
+<h2>➕ Tambah Transaksi</h2>
+
+<div class="relative-container">
+  <input type="text" id="desc" placeholder="Keterangan">
+  <div id="suggestions-desc" class="suggestions-container"></div>
+</div>
+
+<div class="relative-container">
+  <input type="text" id="amount" placeholder="Jumlah (contoh: 20000)">
+  <div id="suggestions-amount" class="suggestions-container"></div>
+</div>
+
+<select id="type">
+  <option value="cash_masuk">Cash Masuk</option>
+  <option value="ewallet_masuk">E-wallet Masuk</option>
+  <option value="cash_keluar">Cash Keluar</option>
+  <option value="ewallet_keluar">E-wallet Keluar</option>
+</select>
+<button class="btn-add" onclick="addTransaction()">Tambah</button>
+<button class="btn-reset" onclick="resetTransactions()">Reset Semua</button>
+
+<h2>📄 Riwayat Transaksi</h2>
+<select id="filterSelect" onchange="showTable(this.value)">
+  <option value="">Pilih Riwayat</option>
+  <option value="cashMasukTable">Cash Masuk</option>
+  <option value="cashKeluarTable">Cash Keluar</option>
+  <option value="ewalletMasukTable">E-wallet Masuk</option>
+  <option value="ewalletKeluarTable">E-wallet Keluar</option>
+</select>
+
+<table id="cashMasukTable"><thead><tr><th>No</th><th>Tanggal</th><th>Keterangan</th><th>Jumlah</th></tr></thead><tbody></tbody></table>
+<table id="cashKeluarTable"><thead><tr><th>No</th><th>Tanggal</th><th>Keterangan</th><th>Jumlah</th></tr></thead><tbody></tbody></table>
+<table id="ewalletMasukTable"><thead><tr><th>No</th><th>Tanggal</th><th>Keterangan</th><th>Jumlah</th></tr></thead><tbody></tbody></table>
+<table id="ewalletKeluarTable"><thead><tr><th>No</th><th>Tanggal</th><th>Keterangan</th><th>Jumlah</th></tr></thead><tbody></tbody></table>
+
+</div>
+
+<script>
+// Kata & angka saran
+const words = ["makan","minum","bakso","beras","ayam","ikan","sayur","nasi","mie","snack","coklat","kopi","teh","jus","air mineral",
+"kue","telur","roti","susu","burger","pizza","es teh","es jeruk","bubur","sate","tempe","tahu","mie goreng","mie rebus",
+"nasi goreng","nasi uduk","nasi padang","ayam goreng","ikan bakar","bakpia","martabak","bubur ayam","bakso urat",
+"bakso malang","soto","soto ayam","soto daging","bubur kacang","bubur srikaya","bubur sumsum","belanja","beli","bekel",
+"besan","beras ketan","beras putih","beras merah","biskuit","bumbu","bawang","buah","sayuran","minuman soda","kopi susu",
+"air putih","es krim","es campur","roti tawar","roti manis","snack coklat","kacang","bumbu sate","ayam bakar","ikan goreng",
+"ikan rebus","bubur ketan","telur rebus","telur dadar","sayur lodeh","sayur asem","sate ayam","sate kambing","jus jeruk",
+"jus apel","jus mangga","mie ayam","mie aceh","bakso solo","bakso urat","bento","bento nasi","belanja sayur","belanja kue"];
+const numbers = [5000,10000,15000,20000,25000,30000,35000,40000,45000,50000,55000,60000,65000,70000,75000,80000,85000,90000,95000,100000];
+
+// Dompet digital
+let cash=0, ewallet=0;
+let transactions=[];
+
+// Fungsi update saldo
+function updateSaldo(){
+  document.getElementById("cashSaldo").innerText="Rp"+cash.toLocaleString("id-ID");
+  document.getElementById("ewalletSaldo").innerText="Rp"+ewallet.toLocaleString("id-ID");
+  let totalKeluar = transactions.filter(t=>t.type.includes("keluar")).reduce((s,t)=>s+t.amount,0);
+  document.getElementById("totalKeluar").innerText="-Rp"+totalKeluar.toLocaleString("id-ID");
+  document.getElementById("totalSaldo").innerText="Rp"+(cash+ewallet).toLocaleString("id-ID");
+}
+
+// Fungsi render history
+function renderHistory(){
+  const cashMasuk=document.querySelector("#cashMasukTable tbody");
+  const cashKeluar=document.querySelector("#cashKeluarTable tbody");
+  const ewalletMasuk=document.querySelector("#ewalletMasukTable tbody");
+  const ewalletKeluar=document.querySelector("#ewalletKeluarTable tbody");
+  [cashMasuk,cashKeluar,ewalletMasuk,ewalletKeluar].forEach(t=>t.innerHTML="");
+  transactions.forEach((t,i)=>{
+    let displayAmount=(t.type.includes("keluar")?"-":"")+"Rp"+t.amount.toLocaleString("id-ID");
+    const row=`<tr><td>${i+1}</td><td>${t.tanggal}</td><td>${t.desc}</td><td>${displayAmount}</td></tr>`;
+    if(t.type==="cash_masuk") cashMasuk.innerHTML+=row;
+    else if(t.type==="cash_keluar") cashKeluar.innerHTML+=row;
+    else if(t.type==="ewallet_masuk") ewalletMasuk.innerHTML+=row;
+    else if(t.type==="ewallet_keluar") ewalletKeluar.innerHTML+=row;
+  });
+}
+
+// Tambah transaksi
+function addTransaction(){
+  const desc=document.getElementById("desc").value.trim();
+  const amount=parseInt(document.getElementById("amount").value.replace(/,/g,""));
+  const type=document.getElementById("type").value;
+  if(!desc || isNaN(amount)){ alert("Isi semua kolom!"); return; }
+  const tanggal=new Date().toLocaleDateString("id-ID");
+  if(type==="cash_masuk") cash+=amount;
+  else if(type==="ewallet_masuk") ewallet+=amount;
+  else if(type==="cash_keluar"){ if(amount>cash){ alert("Saldo Cash tidak cukup!"); return; } cash-=amount; }
+  else if(type==="ewallet_keluar"){ if(amount>ewallet){ alert("Saldo E-wallet tidak cukup!"); return; } ewallet-=amount; }
+  transactions.push({desc,type,amount,tanggal});
+  updateSaldo(); renderHistory(); showTable(document.getElementById("filterSelect").value);
+  document.getElementById("desc").value=""; document.getElementById("amount").value="";
+}
+
+// Reset transaksi
+function resetTransactions(){
+  if(confirm("Yakin reset semua?")){
+    transactions=[]; cash=0; ewallet=0;
+    updateSaldo(); renderHistory(); showTable(document.getElementById("filterSelect").value);
+  }
+}
+
+// Show table filter
+function showTable(val){
+  const tables=["cashMasukTable","cashKeluarTable","ewalletMasukTable","ewalletKeluarTable"];
+  tables.forEach(id=>document.getElementById(id).style.display=(id===val)?"table":"none");
+}
+
+// Autocomplete saran
+function showSuggestions(val,type){
+  const container = document.getElementById(type==='desc'?'suggestions-desc':'suggestions-amount');
+  if(!val) { container.style.display='none'; return; }
+  const parts = val.split(" ");
+  const last = parts[parts.length-1].toLowerCase();
+  if(!last) { container.style.display='none'; return; }
+  let matches = type==='desc' ? words.filter(w=>w.toLowerCase().includes(last)) : numbers.filter(n=>n.toString().startsWith(last));
+  if(matches.length===0){ container.style.display='none'; return; }
+  container.innerHTML=""; container.style.display='block';
+  matches.slice(0,10).forEach(m=>{
+    const div=document.createElement("div");
+    div.className="suggestion-item";
+    div.innerText = m;
+    div.addEventListener("mousedown", function(ev){
+      ev.preventDefault();
+      parts[parts.length-1]=m;
+      if(type==='desc') document.getElementById("desc").value=parts.join(" ");
+      else document.getElementById("amount").value=parts.join(" ");
+      container.style.display='none';
+    });
+    container.appendChild(div);
+  });
+}
+
+// Event listeners
+document.getElementById("desc").addEventListener("input", e=>showSuggestions(e.target.value,'desc'));
+document.getElementById("amount").addEventListener("input", e=>showSuggestions(e.target.value,'amount'));
+
+// Hilangkan saran kalau tekan spasi
+document.getElementById("desc").addEventListener("keydown", e=>{ if(e.key===' ') document.getElementById("suggestions-desc").style.display='none'; });
+document.getElementById("amount").addEventListener("keydown", e=>{ if(e.key===' ') document.getElementById("suggestions-amount").style.display='none'; });
+
+// Hilangkan saran kalau pindah kolom
+document.getElementById("desc").addEventListener("blur", e=>{ setTimeout(()=>document.getElementById("suggestions-desc").style.display='none',100); });
+document.getElementById("amount").addEventListener("blur", e=>{ setTimeout(()=>document.getElementById("suggestions-amount").style.display='none',100); });
+
+updateSaldo(); renderHistory();
+</script>
+</body>
+</html>
